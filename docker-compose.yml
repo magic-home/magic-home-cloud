@@ -1,0 +1,79 @@
+version: "3.3"
+
+services:
+    # Manage device catalogue and configuration
+    device-conf:
+        image: magichome/device-conf:0.0.1
+        networks:
+            - service
+        ports:
+            - 3311:3311
+        deploy:
+            mode: global # Only one service (can be changed later)
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                window: 380s
+            placement:
+                constraints:
+                    - 'node.role == manager'
+                    - 'node.platform.os == linux'
+            resources:
+                limits:
+                    memory: 50M
+
+    # mqtt-broker
+    mqtt-broker:
+        image: toke/mosquitto
+        networks:
+            - service
+        ports:
+            - 1883:1883
+        deploy:
+            mode: global # Only one service (can be changed later)
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                window: 380s
+            placement:
+                constraints:
+                    - 'node.role == manager'
+                    - 'node.platform.os == linux'
+            resources:
+                limits:
+                    memory: 500M
+ 
+    # manage device state
+    device-state:
+        image: magichome/device-state:0.0.1
+        networks:
+            - service
+        ports:
+            - 3312:3312
+        depends_on:
+            - device-conf
+            - mqtt-broker
+        environment:
+            DEVICE_CONF_URL: "http://device-conf:3312"
+            MQTT_BROKER_URL: "mqtt://mqtt-broker:1883"
+            # EVENT: "srd-magic-home-sourish"
+        deploy:
+            mode: global # Only one service (can be changed later)
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                window: 380s
+            placement:
+                constraints:
+                    - 'node.role == manager'
+                    - 'node.platform.os == linux'
+            resources:
+                limits:
+                    memory: 50M
+
+
+networks:
+    # created outside of the compose file
+    service:
+        external:
+            name: service
